@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Langagraph — Graph & Agent Visualizer</title>
+
+<style>
+/* ---------------------------- */
+/* PREMIUM MODERN UI STYLING    */
+/* ---------------------------- */
+
+:root {
+  --bg: #0e1321;
+  --panel: #111a2e;
+  --panel-dark: #0a1223;
+  --muted: #96a4b0;
+  --accent: #61a5ff;
+  --glow: rgba(97,165,255,0.35);
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, Segoe UI, Roboto, Arial;
+  background: radial-gradient(circle at 20% 20%, #172236, #0d1421 70%);
+  color: #e9f1fa;
+  user-select: none;
+}
+
+/* layout */
+.app {
+  display: grid;
+  grid-template-columns: 330px 1fr;
+  gap: 20px;
+  height: 100vh;
+  padding: 18px;
+}
+
+/* sidebar panel */
+.panel {
+  background: linear-gradient(180deg,#0f1b2f 0%, #0b1425 100%);
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 0 20px rgba(0,0,0,.45), 0 0 15px var(--glow);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+
+/* controls */
+.controls label {
+  display: block;
+  margin: 12px 0;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+input[type=text],
+input[type=number],
+input[type=color],
+select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #dce7f5;
+  transition: 0.25s ease;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 8px var(--glow);
+}
+
+button {
+  margin-top: 8px;
+  padding: 9px 12px;
+  background: var(--accent);
+  border: none;
+  color: #07203a;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.25s ease;
+  letter-spacing: 0.4px;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px var(--glow);
+}
+
+.small {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* svg display */
+svg {
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  background: linear-gradient(180deg,#0b1328,#0a121c);
+  box-shadow: inset 0 0 25px rgba(0,0,0,.5);
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+/* graph nodes */
+.node circle {
+  fill: #0c8ab7;
+  stroke: #163d57;
+  stroke-width: 2px;
+  filter: drop-shadow(0 0 6px rgba(0,153,255,0.28));
+  transition: 0.25s ease;
+}
+
+.node:hover circle {
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 10px rgba(0,153,255,0.55));
+}
+
+.node text {
+  pointer-events: none;
+  font-weight: 600;
+  fill: #eaf6ff;
+}
+
+/* edges */
+.edge {
+  stroke: #3a76a5;
+  stroke-width: 2.2;
+  stroke-opacity: 0.9;
+}
+
+/* agents */
+.agent {
+  r: 6;
+  stroke: #fff;
+  stroke-width: 1px;
+  filter: drop-shadow(0px 0px 6px rgba(255,255,255,.35));
+}
+
+/* tooltip */
+.tooltip {
+  position: absolute;
+  padding: 7px 10px;
+  background: rgba(10,18,30,0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  color: var(--muted);
+  pointer-events: none;
+  font-size: 12.5px;
+  box-shadow: 0 0 12px rgba(0,0,0,.4);
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR PANEL -->
+  <div class="panel" id="controlsPanel">
+    <h1>Langagraph — Graph & Agent Visualizer</h1>
+
+    <div class="controls">
+      <label>Predefined graphs
+        <select id="preset">
+          <option value="grid">Grid 4x4</option>
+          <option value="random">Random (20 nodes)</option>
+          <option value="ring">Ring</option>
+          <option value="star">Star</option>
+        </select>
+      </label>
+
+      <label>Simulation speed
+        <input id="simSpeed" type="range" min="0.2" max="3" step="0.1" value="1">
+      </label>
+
+      <label>Agent spawn interval (ms)
+        <input id="spawnInterval" type="number" value="1200">
+      </label>
+
+      <label>Agent color
+        <input id="agentColor" type="color" value="#ffb86b">
+      </label>
+
+      <div style="display:flex;gap:8px">
+        <button id="startBtn">Start</button>
+        <button id="pauseBtn">Pause</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)">
+
+      <div class="small">Manual edit</div>
+
+      <label>New node label
+        <input id="newNodeLabel" type="text" placeholder="A" />
+      </label>
+
+      <div style="display:flex;gap:8px">
+        <button id="addNodeBtn">Add Node</button>
+        <button id="addEdgeBtn">Add Edge</button>
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)">
+
+      <div class="small">Legend</div>
+      <div class="small" style="margin-top:6px">
+        ● Node (click to view)<br>
+        → Directed edge (hover for weight)<br>
+        ⤷ Agents follow shortest path using Dijkstra's algorithm
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAPH AREA -->
+  <div class="panel" style="padding:8px;overflow:hidden;position:relative">
+    <svg id="svg"></svg>
+    <div id="tooltip" class="tooltip" style="display:none"></div>
+  </div>
+
+</div>
+
+
+<!-- ===================== -->
+<!--    JAVASCRIPT CODE    -->
+<!-- ===================== -->
+<script>
+
+/* --- Utility Setup --- */
+const svg = document.getElementById('svg');
+const NS = "http://www.w3.org/2000/svg";
+svg.setAttribute("viewBox", `0 0 ${Math.max(window.innerWidth-360,800)} ${window.innerHeight-40}`);
+
+function createEl(tag, attrs={}) {
+  const el = document.createElementNS(NS, tag);
+  for (let k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+/* --- Graph Model --- */
+let graph = { nodes: [], edges: [] };
+let nodeIdCounter = 0;
+
+/* Add Node */
+function addNode(x, y, label) {
+  const id = "n" + (++nodeIdCounter);
+  graph.nodes.push({ id, label: label || id, x, y });
+  redraw();
+  return id;
+}
+
+/* Add Edge */
+function addEdge(from, to, w=1) {
+  graph.edges.push({ from, to, w });
+  redraw();
+}
+
+/* Reset Graph */
+function resetGraph() {
+  graph = { nodes: [], edges: [] };
+  nodeIdCounter = 0;
+  clearAgents();
+  redraw();
+}
+
+/* --- Preset Graphs --- */
+function buildPreset(type) {
+  resetGraph();
+
+  if (type === "grid") {
+    const cols = 4, rows = 4, spacing = 110, ox = 120, oy = 120;
+    for (let r=0;r<rows;r++)
+      for (let c=0;c<cols;c++)
+        addNode(ox+c*spacing, oy+r*spacing, String.fromCharCode(65 + r*cols + c));
+
+    for (let i=0;i<graph.nodes.length;i++){
+      const n = graph.nodes[i];
+      if ((i+1)%cols!==0) addEdge(n.id, graph.nodes[i+1].id, 1);
+      if (i+cols<graph.nodes.length) addEdge(n.id, graph.nodes[i+cols].id, 1);
+    }
+  }
+
+  if (type === "random") {
+    const N=20;
+    for(let i=0;i<N;i++)
+      addNode(100+Math.random()*600, 100+Math.random()*400, "N"+(i+1));
+
+    for(let i=0;i<N;i++){
+      const from = graph.nodes[i];
+      const deg = 1 + Math.floor(Math.random()*3);
+      for(let j=0;j<deg;j++){
+        const to = graph.nodes[Math.floor(Math.random()*N)];
+        if(to.id!==from.id)
+          addEdge(from.id, to.id, 1 + Math.floor(Math.random()*9));
+      }
+    }
+  }
+
+  if (type === "ring") {
+    const N=12, cx=400, cy=260, radius=200;
+    for (let i=0;i<N;i++){
+      const t = (i/N)*Math.PI*2;
+      addNode(cx+Math.cos(t)*radius, cy+Math.sin(t)*radius, "R"+(i+1));
+    }
+    for(let i=0;i<N;i++)
+      addEdge(graph.nodes[i].id, graph.nodes[(i+1)%N].id, 1);
+  }
+
+  if (type === "star") {
+    const N=10, cx=400, cy=260;
+    addNode(cx, cy, "Center");
+
+    for (let i=0;i<N;i++){
+      const t = (i/N)*Math.PI*2;
+      addNode(cx+Math.cos(t)*220, cy+Math.sin(t)*220, "S"+(i+1));
+      addEdge("n1", "n"+(i+2), 1);
+    }
+  }
+}
+
+/* --- Drawing SVG Elements --- */
+function redraw() {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  drawDefs();
+  drawEdges();
+  drawNodes();
+  drawAgentsLayer();
+}
+
+function drawDefs() {
+  const defs = createEl("defs");
+  const marker = createEl("marker", {
+    id:"arrow", markerWidth:10, markerHeight:10, refX:10, refY:5, orient:"auto"
+  });
+  const path = createEl("path", { d:"M0,0 L10,5 L0,10 z", fill:"#2b6b8f" });
+  marker.appendChild(path);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+}
+
+function findNode(id) { return graph.nodes.find(n => n.id === id); }
+
+function drawEdges() {
+  for (const e of graph.edges) {
+    const n1 = findNode(e.from), n2 = findNode(e.to);
+    if (!n1 || !n2) continue;
+
+    const line = createEl("path", {
+      d: edgePath(n1.x, n1.y, n2.x, n2.y),
+      class: "edge",
+      "marker-end":"url(#arrow)"
+    });
+
+    line.addEventListener("mouseover", ev => showTooltip(`w=${e.w}`, ev.pageX, ev.pageY));
+    line.addEventListener("mouseout", hideTooltip);
+
+    svg.appendChild(line);
+  }
+}
+
+function edgePath(x1,y1,x2,y2) {
+  const dx=x2-x1, dy=y2-y1, dist=Math.hypot(dx,dy), r=18;
+  const ux=dx/dist, uy=dy/dist;
+  return `M ${x1+ux*r} ${y1+uy*r} L ${x2-ux*r} ${y2-uy*r}`;
+}
+
+function drawNodes() {
+  for (const n of graph.nodes) {
+    const g = createEl("g", { class:"node", "data-id":n.id });
+
+    const circle = createEl("circle", {
+      cx:n.x, cy:n.y, r:18
+    });
+
+    const text = createEl("text", {
+      x:n.x, y:n.y+5,
+      "text-anchor":"middle",
+      "font-size":12
+    });
+    text.textContent = n.label;
+
+    g.appendChild(circle);
+    g.appendChild(text);
+
+    g.addEventListener("click", ()=> onNodeClick(n));
+    g.addEventListener("mouseenter", ev => showTooltip(`Node ${n.id}`, ev.pageX, ev.pageY));
+    g.addEventListener("mouseleave", hideTooltip);
+
+    svg.appendChild(g);
+  }
+}
+
+/* --- Tooltip --- */
+const tooltip = document.getElementById("tooltip");
+
+function showTooltip(txt,x,y) {
+  tooltip.style.display="block";
+  tooltip.style.left = (x+12)+"px";
+  tooltip.style.top  = (y+12)+"px";
+  tooltip.textContent = txt;
+}
+
+function hideTooltip() {
+  tooltip.style.display="none";
+}
+
+/* --- Agents Simulation --- */
+let agents=[];
+let agentCounter=0;
+let running=false;
+
+function spawnAgent(srcId,dstId){
+  const src=findNode(srcId), dst=findNode(dstId);
+  if(!src||!dst) return;
+
+  const path = dijkstraPath(graph, srcId, dstId);
+  if (!path) return;
+
+  const waypoints = path.map(id => {
+    const n=findNode(id);
+    return { x:n.x, y:n.y, id };
+  });
+
+  const agent = {
+    id: "a"+(++agentCounter),
+    color: document.getElementById("agentColor").value,
+    waypoints,
+    idx: 0,
+    pos:{ x:waypoints[0].x, y:waypoints[0].y }
+  };
+
+  agents.push(agent);
+}
+
+function clearAgents() {
+  agents = [];
+  agentCounter=0;
+}
+
+function drawAgentsLayer() {
+  for (const a of agents) {
+    const c = createEl("circle", {
+      cx: a.pos.x,
+      cy: a.pos.y,
+      r: 6,
+      fill: a.color,
+      class:"agent"
+    });
+
+    svg.appendChild(c);
+  }
+}
+
+/* --- Simulation Loop --- */
+function startSim() {
+  if (running) return;
+  running = true;
+
+  function loop() {
+    if (!running) return;
+
+    stepSimulation(1/60);
+    redraw();
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+function pauseSim() { running = false; }
+function resetSim() { running=false; clearAgents(); redraw(); }
+
+function stepSimulation(dt) {
+  const speedMult = parseFloat(document.getElementById("simSpeed").value);
+  const speed = 80 * speedMult; // pixels/s
+
+  for (const a of agents) {
+    if (a.idx >= a.waypoints.length-1) continue;
+
+    const A = a.pos;
+    const B = a.waypoints[a.idx+1];
+
+    const dx=B.x-A.x, dy=B.y-A.y;
+    const dist=Math.hypot(dx,dy);
+
+    if (dist < speed*dt) {
+      a.pos.x=B.x; a.pos.y=B.y; a.idx++;
+    } else {
+      a.pos.x += dx/dist*(speed*dt);
+      a.pos.y += dy/dist*(speed*dt);
+    }
+  }
+}
+
+/* --- Dijkstra Pathfinding --- */
+function dijkstraPath(graph, src, dst) {
+  const Q=new Set(graph.nodes.map(n=>n.id));
+  const dist={}, prev={};
+
+  for(const n of graph.nodes){
+    dist[n.id]=Infinity; prev[n.id]=null;
+  }
+  dist[src]=0;
+
+  while(Q.size){
+    let u=null;
+    for(const v of Q){ if(u===null || dist[v]<dist[u]) u=v; }
+
+    Q.delete(u);
+    if(u===dst) break;
+
+    for(const e of graph.edges.filter(ed=>ed.from===u)){
+      const alt = dist[u] + e.w;
+      if(alt < dist[e.to]){
+        dist[e.to]=alt;
+        prev[e.to]=u;
+      }
+    }
+  }
+
+  if(!prev[dst] && src!==dst) return null;
+
+  const path=[];
+  let u=dst;
+  while(u){
+    path.unshift(u);
+    if(u===src) break;
+    u=prev[u];
+  }
+  return path;
+}
+
+/* --- UI Bindings --- */
+document.getElementById("preset").addEventListener("change", e => buildPreset(e.target.value));
+document.getElementById("startBtn").addEventListener("click", startSim);
+document.getElementById("pauseBtn").addEventListener("click", pauseSim);
+document.getElementById("resetBtn").addEventListener("click", resetSim);
+
+document.getElementById("addNodeBtn").addEventListener("click", ()=>{
+  const lbl=document.getElementById("newNodeLabel").value || ("N"+(nodeIdCounter+1));
+  addNode(150+Math.random()*500, 150+Math.random()*300, lbl);
+});
+
+let addingEdge=false;
+document.getElementById("addEdgeBtn").addEventListener("click", ()=>{
+  addingEdge=true;
+  alert("Click source node → then destination node");
+});
+
+svg.addEventListener("click", ev=>{
+  const t = ev.target.closest("[data-id]");
+  if(!t) return;
+
+  if(addingEdge){
+    const src=t.getAttribute("data-id");
+
+    function pickDst(ev2){
+      const tgt=ev2.target.closest("[data-id]");
+      if(tgt){
+        const dst=tgt.getAttribute("data-id");
+        if(dst!==src){
+          addEdge(src,dst,1+Math.floor(Math.random()*9));
+          svg.removeEventListener("click", pickDst);
+          addingEdge=false;
+        }
+      }
+    }
+    svg.addEventListener("click", pickDst);
+  }
+});
+
+/* clicking a node spawns a random agent */
+function onNodeClick(n){
+  const others = graph.nodes.filter(x=>x.id!==n.id);
+  if(!others.length) return;
+  const dst = others[Math.floor(Math.random()*others.length)];
+  spawnAgent(n.id, dst.id);
+}
+
+/* auto spawn agents */
+let spawnIntervalId=null;
+function startSpawning(){
+  if(spawnIntervalId) clearInterval(spawnIntervalId);
+
+  const interval = parseInt(document.getElementById("spawnInterval").value)||1000;
+  spawnIntervalId = setInterval(()=>{
+    if(graph.nodes.length<2) return;
+    const s = graph.nodes[Math.floor(Math.random()*graph.nodes.length)].id;
+    let d=s;
+    while(d===s) d=graph.nodes[Math.floor(Math.random()*graph.nodes.length)].id;
+    spawnAgent(s,d);
+  }, interval);
+}
+
+document.getElementById("startBtn").addEventListener("click", startSpawning);
+document.getElementById("pauseBtn").addEventListener("click", ()=> clearInterval(spawnIntervalId));
+document.getElementById("resetBtn").addEventListener("click", ()=> clearInterval(spawnIntervalId));
+
+/* Initial Load */
+buildPreset("grid");
+redraw();
+
+/* Resize responsive */
+window.addEventListener("resize", ()=>{
+  svg.setAttribute("viewBox", `0 0 ${Math.max(window.innerWidth-360,800)} ${window.innerHeight-40}`);
+  redraw();
+});
+
+</script>
+</body>
+</html>
