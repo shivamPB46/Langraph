@@ -60,17 +60,12 @@ Auto-resizing window
 
 🛠 Tech Stack
 
-HTML5
+HTML
 
-CSS3 (Custom Premium UI Styling)
+CSS
 
-JavaScript (Vanilla)
+JavaScript 
 
-SVG Graphics
-
-📸 Screenshots
-
-(Add your screenshots here)
 
 📦 How to Run
 1. Download or clone the repository
